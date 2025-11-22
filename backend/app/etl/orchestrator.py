@@ -44,15 +44,15 @@ class ETLOrchestrator:
     async def run(
         self,
         year_month: Optional[str] = None,
-        file_patterns: Optional[List[str]] = None,
         truncate_tables: bool = False
     ) -> dict:
         """
         Run the complete ETL pipeline
         
+        IMPORTANTE: Baixa TODOS os 37 arquivos primeiro, depois processa em ordem
+        
         Args:
-            year_month: Format YYYY-MM (defaults to current month)
-            file_patterns: List of patterns to filter files
+            year_month: Format YYYY-MM (defaults to 2025-11)
             truncate_tables: Whether to truncate tables before loading
         
         Returns:
@@ -60,62 +60,100 @@ class ETLOrchestrator:
         """
         self.stats["start_time"] = datetime.now()
         
+        if year_month is None:
+            year_month = "2025-11"  # Último mês disponível
+        
         logger.info("=" * 80)
-        logger.info("Starting ETL Pipeline")
-        logger.info(f"Year-Month: {year_month or 'current'}")
-        logger.info(f"Patterns: {file_patterns or 'all'}")
+        logger.info("Starting ETL Pipeline - FULL DOWNLOAD")
+        logger.info(f"Year-Month: {year_month}")
         logger.info(f"Truncate: {truncate_tables}")
+        logger.info("⚠️  IMPORTANTE: Baixando TODOS os 37 arquivos (~15-20GB)")
         logger.info("=" * 80)
         
         try:
-            # Step 1: Download files
-            logger.info("\n📥 STEP 1: Downloading files...")
+            # Step 1: Download ALL files (no filter)
+            logger.info("\n📥 STEP 1: Downloading ALL files...")
+            logger.info("This will take 30-60 minutes depending on connection")
             downloaded_files = await self.downloader.download_all(
                 year_month=year_month,
-                file_patterns=file_patterns
+                file_patterns=None  # Baixar TUDO
             )
             
             self.stats["files_downloaded"] = len(downloaded_files)
+            
+            logger.info(f"\n✅ Downloaded {len(downloaded_files)} files")
+            logger.info(f"Total size: {sum(f.stat().st_size for f in downloaded_files) / 1024**3:.2f} GB")
             
             if not downloaded_files:
                 logger.error("No files downloaded, aborting")
                 return self.stats
             
-            # Step 2: Process and load
-            logger.info(f"\n⚙️  STEP 2: Processing {len(downloaded_files)} files...")
+            # Step 2: Process and load IN ORDER
+            logger.info(f"\n⚙️  STEP 2: Processing files in correct order...")
+            
+            # Ordem de processamento (respeita relacionamentos)
+            processing_order = [
+                # 1. Tabelas auxiliares (lookup tables)
+                ("CNAEs", "cnaes"),
+                ("Municipios", "municipios"),
+                ("Naturezas", "naturezas"),
+                ("Paises", "paises"),
+                ("Qualificacoes", "qualificacoes"),
+                ("Motivos", "motivos"),
+                
+                # 2. Dados principais (na ordem de dependência)
+                ("Empresas", "empresas"),
+                ("Estabelecimentos", "estabelecimentos"),
+                ("Socios", "socios"),
+                ("Simples", "simples"),
+            ]
             
             async with async_session() as session:
                 loader = DatabaseLoader(session)
                 
-                # Truncate tables if requested
+                # Truncate ALL tables if requested
                 if truncate_tables:
-                    logger.info("\n🗑️  Truncating tables...")
-                    for file_type in ["Empresas", "Estabelecimentos", "Socios"]:
-                        await loader.truncate_table(file_type)
+                    logger.info("\n🗑️  Truncating ALL tables...")
+                    for file_type, _ in processing_order:
+                        try:
+                            await loader.truncate_table(file_type)
+                        except Exception as e:
+                            logger.warning(f"Could not truncate {file_type}: {e}")
                 
-                # Process each ZIP file
-                for i, zip_file in enumerate(downloaded_files, 1):
-                    logger.info(f"\n📦 [{i}/{len(downloaded_files)}] Processing {zip_file.name}")
+                # Process files in order
+                for file_type, table_name in processing_order:
+                    logger.info(f"\n📊 Processing {file_type} -> {table_name}")
                     
-                    try:
-                        # Process and load in chunks
-                        for file_type, chunk in self.processor.process_zip_file(zip_file):
-                            # Skip if not main tables
-                            if file_type not in ["Empresas", "Estabelecimentos", "Socios"]:
-                                logger.debug(f"Skipping {file_type}")
-                                continue
-                            
-                            # Bulk insert
-                            inserted = await loader.bulk_insert(file_type, chunk)
-                            self.stats["total_records"] += inserted
-                        
-                        self.stats["files_processed"] += 1
+                    # Find all ZIP files matching this type
+                    matching_files = [
+                        f for f in downloaded_files 
+                        if file_type.upper() in f.name.upper()
+                    ]
                     
-                    except Exception as e:
-                        error_msg = f"Error processing {zip_file.name}: {e}"
-                        logger.error(error_msg)
-                        self.stats["errors"].append(error_msg)
+                    if not matching_files:
+                        logger.warning(f"⚠️  No files found for {file_type}")
                         continue
+                    
+                    logger.info(f"Found {len(matching_files)} file(s) for {file_type}")
+                    
+                    # Process each matching file
+                    for i, zip_file in enumerate(matching_files, 1):
+                        logger.info(f"  [{i}/{len(matching_files)}] {zip_file.name}")
+                        
+                        try:
+                            # Process and load in chunks
+                            for detected_type, chunk in self.processor.process_zip_file(zip_file):
+                                if detected_type == file_type:
+                                    inserted = await loader.bulk_insert(file_type, chunk)
+                                    self.stats["total_records"] += inserted
+                            
+                            self.stats["files_processed"] += 1
+                        
+                        except Exception as e:
+                            error_msg = f"Error processing {zip_file.name}: {e}"
+                            logger.error(error_msg)
+                            self.stats["errors"].append(error_msg)
+                            continue
                 
                 # Step 3: Post-processing
                 logger.info("\n🔧 STEP 3: Post-processing...")
