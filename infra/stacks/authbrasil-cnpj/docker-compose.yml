@@ -1,0 +1,99 @@
+version: "3.8"
+
+services:
+  api:
+    image: authbrasil/api:latest
+    environment:
+      # Environment
+      ENVIRONMENT: production
+      DEBUG: "False"
+      
+      # Database (usar secrets em produção real)
+      DATABASE_URL: postgresql://authbrasil_user:${DB_PASSWORD}@postgres:5432/authbrasil_cnpj
+      DATABASE_POOL_SIZE: 20
+      DATABASE_MAX_OVERFLOW: 40
+      
+      # Redis
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      
+      # API
+      API_VERSION: v1
+      CORS_ORIGINS: https://app.authbrasil.app.br,https://authbrasil.com.br
+      
+      # Secrets (usar Docker Secrets em produção real)
+      SECRET_KEY: ${SECRET_KEY}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      
+      # Stripe
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      
+      # Email
+      EMAIL_FROM: noreply@authbrasil.com.br
+      EMAIL_PROVIDER: sendgrid
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+      
+      # Rate Limiting
+      RATE_LIMIT_PER_MINUTE: 100
+      RATE_LIMIT_LOGIN_ATTEMPTS: 5
+    networks:
+      - network_public
+    deploy:
+      mode: replicated
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=network_public"
+        
+        # Router HTTP
+        - "traefik.http.routers.authbrasil-api.rule=Host(`api.authbrasil.app.br`)"
+        - "traefik.http.routers.authbrasil-api.entrypoints=websecure"
+        - "traefik.http.routers.authbrasil-api.priority=1"
+        - "traefik.http.routers.authbrasil-api.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.authbrasil-api.service=authbrasil-api"
+        
+        # Service
+        - "traefik.http.services.authbrasil-api.loadbalancer.server.port=8000"
+        - "traefik.http.services.authbrasil-api.loadbalancer.sticky.cookie=true"
+        - "traefik.http.services.authbrasil-api.loadbalancer.sticky.cookie.name=authbrasil_api_lb"
+        
+        # Middlewares
+        - "traefik.http.middlewares.authbrasil-compress.compress=true"
+        - "traefik.http.middlewares.authbrasil-ratelimit.ratelimit.average=100"
+        - "traefik.http.middlewares.authbrasil-ratelimit.ratelimit.burst=50"
+        
+        # Security Headers
+        - "traefik.http.middlewares.authbrasil-headers.headers.framedeny=true"
+        - "traefik.http.middlewares.authbrasil-headers.headers.browserxssfilter=true"
+        - "traefik.http.middlewares.authbrasil-headers.headers.contenttypenosniff=true"
+        - "traefik.http.middlewares.authbrasil-headers.headers.forcestsheader=true"
+        - "traefik.http.middlewares.authbrasil-headers.headers.stsincludesubdomains=true"
+        - "traefik.http.middlewares.authbrasil-headers.headers.stspreload=true"
+        - "traefik.http.middlewares.authbrasil-headers.headers.stsseconds=31536000"
+        
+        # Apply middlewares
+        - "traefik.http.routers.authbrasil-api.middlewares=authbrasil-compress,authbrasil-ratelimit,authbrasil-headers"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  network_public:
+    external: true
+    name: network_public
