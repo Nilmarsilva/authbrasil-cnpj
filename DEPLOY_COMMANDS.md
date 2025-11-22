@@ -1,5 +1,24 @@
 # 🚀 Comandos de Deploy - AuthBrasil CNPJ
 
+## 👤 CRIAR USUÁRIO ADMIN (Executar após primeiro deploy)
+
+```bash
+# Na VPS, entrar no container da API
+docker exec -it $(docker ps -q -f name=authbrasil_api) bash
+
+# Dentro do container, rodar o script
+cd /app
+python scripts/create_admin.py
+
+# Credenciais criadas:
+# Email: admin@authbrasil.com.br
+# Senha: Admin@123
+```
+
+**⚠️ IMPORTANTE:** Altere a senha após o primeiro login!
+
+---
+
 ## 📋 SETUP INICIAL (Executar apenas 1 vez)
 
 ### 1. Configurar Git na VPS
