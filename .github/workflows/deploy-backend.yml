@@ -5,7 +5,6 @@ on:
     branches: [ main ]
     paths:
       - 'backend/**'
-      - 'infra/stacks/authbrasil-cnpj/**'
       - '.github/workflows/deploy-backend.yml'
   workflow_dispatch:
 
@@ -17,24 +16,17 @@ jobs:
       - name: 🔍 Checkout code
         uses: actions/checkout@v4
 
-      - name: 📂 Create deployment package
-        run: |
-          # Verificar estrutura
-          ls -la backend/
-          
-          # Criar pacote incluindo TUDO do backend
-          tar -czf backend-deploy.tar.gz backend/
-
-      - name: 🚀 Deploy Backend to VPS
+      - name: 📂 Deploy Backend to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "backend-deploy.tar.gz"
-          target: "/tmp/"
+          source: "backend/*"
+          target: "/root/"
+          rm: true
 
-      - name:  Build & Update Docker Service
+      - name: 🔄 Build & Update Docker Service
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -43,21 +35,8 @@ jobs:
           script: |
             set -e
             
-            echo "📦 Extraindo código..."
-            cd /opt/authbrasil/authbrasil-cnpj
-            
-            # Backup
-            rm -rf backend_backup
-            if [ -d "backend" ]; then
-              cp -r backend backend_backup
-            fi
-            
-            # Extrair novo código
-            tar -xzf /tmp/backend-deploy.tar.gz -C /opt/authbrasil/authbrasil-cnpj/
-            rm /tmp/backend-deploy.tar.gz
-            
             echo "🏗️ Building API image..."
-            cd backend
+            cd /root/backend
             docker build -t authbrasil/api:latest .
             
             echo "📊 Running migrations..."
@@ -68,10 +47,9 @@ jobs:
               alembic upgrade head || echo "⚠️ Migrations já executadas"
             
             echo "⚙️ Criando .env..."
-            cd /opt/authbrasil/authbrasil-cnpj/infra/stacks/authbrasil-cnpj
-            cat > .env << 'EOF'
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+            cat > /root/backend/.env << 'EOF'
+            DATABASE_URL=postgresql://authbrasil_user:${{ secrets.DB_PASSWORD }}@postgres:5432/authbrasil_cnpj
+            REDIS_URL=redis://:${{ secrets.REDIS_PASSWORD }}@redis:6379/0
             SECRET_KEY=${{ secrets.SECRET_KEY }}
             JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
             STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
@@ -80,17 +58,59 @@ jobs:
             SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}
             EOF
             
+            echo "� Criando docker-compose para backend..."
+            cat > /root/docker-compose.backend.yml << 'EOFYML'
+            version: '3.8'
+            
+            services:
+              api:
+                image: authbrasil/api:latest
+                environment:
+                  - NODE_ENV=production
+                env_file:
+                  - /root/backend/.env
+                networks:
+                  - network_public
+                deploy:
+                  mode: replicated
+                  replicas: 2
+                  placement:
+                    constraints:
+                      - node.role == manager
+                  restart_policy:
+                    condition: on-failure
+                    delay: 10s
+                    max_attempts: 5
+                  update_config:
+                    parallelism: 1
+                    delay: 10s
+                    order: start-first
+                  labels:
+                    - traefik.enable=true
+                    - "traefik.http.routers.api.rule=Host(\`api.authbrasil.app.br\`)"
+                    - traefik.http.routers.api.entrypoints=websecure
+                    - traefik.http.routers.api.tls.certresolver=letsencryptresolver
+                    - traefik.http.services.api.loadbalancer.server.port=8000
+                    - traefik.docker.network=network_public
+                  resources:
+                    limits:
+                      cpus: '1'
+                      memory: 1G
+                    reservations:
+                      cpus: '0.5'
+                      memory: 512M
+            
+            networks:
+              network_public:
+                external: true
+            EOFYML
+            
             echo "🚀 Deploying stack..."
-            docker stack deploy -c docker-compose.yml authbrasil
+            docker stack deploy -c /root/docker-compose.backend.yml authbrasil
             
             echo "🔄 Rolling update..."
             sleep 5
-            docker service update \
-              --force \
-              --update-parallelism 1 \
-              --update-delay 10s \
-              --update-order start-first \
-              authbrasil_api
+            docker service update --force authbrasil_api
             
             echo "⏳ Aguardando service atualizar..."
             sleep 15
