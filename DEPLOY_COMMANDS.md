@@ -1,21 +1,27 @@
 # 🚀 Comandos de Deploy - AuthBrasil CNPJ
 
-## 👤 CRIAR USUÁRIO ADMIN (Executar após primeiro deploy)
+## �️ INICIALIZAR BANCO DE DADOS (Executar após primeiro deploy)
 
 ```bash
 # Na VPS, entrar no container da API
 docker exec -it $(docker ps -q -f name=authbrasil_api) bash
 
-# Dentro do container, rodar o script
+# Dentro do container, rodar o script de inicialização
 cd /app
-python scripts/create_admin.py
+bash scripts/init_db.sh
+
+# Isso vai:
+# 1. Criar todas as tabelas (migrations)
+# 2. Criar usuário admin automaticamente
 
 # Credenciais criadas:
 # Email: admin@authbrasil.com.br
 # Senha: Admin@123
 ```
 
-**⚠️ IMPORTANTE:** Altere a senha após o primeiro login!
+**⚠️ IMPORTANTE:** 
+- Execute apenas 1 vez!
+- Altere a senha do admin após o primeiro login!
 
 ---
 
