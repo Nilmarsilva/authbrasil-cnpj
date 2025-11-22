@@ -1,0 +1,126 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      stack:
+        description: 'Stack para deploy'
+        required: true
+        type: choice
+        options:
+          - all
+          - traefik
+          - portainer
+          - databases
+          - authbrasil
+      action:
+        description: 'Ação'
+        required: true
+        type: choice
+        options:
+          - deploy
+          - update
+          - logs
+          - status
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Adicionar VPS ao known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy Stack
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          STACK="${{ github.event.inputs.stack }}"
+          ACTION="${{ github.event.inputs.action }}"
+          
+          echo "🚀 Executando $ACTION para stack $STACK"
+          
+          # Conectar e executar comandos
+          ssh $VPS_USER@$VPS_HOST << 'ENDSSH'
+            cd /opt/authbrasil/authbrasil-cnpj
+            
+            # Pull código atualizado
+            git pull origin main
+            
+            # Executar ação baseado na stack
+            STACK="${{ github.event.inputs.stack }}"
+            ACTION="${{ github.event.inputs.action }}"
+            
+            case $STACK in
+              all)
+                if [ "$ACTION" = "deploy" ]; then
+                  echo "📦 Deployando todas as stacks..."
+                  docker stack deploy -c infra/stacks/traefik/docker-compose.yml traefik
+                  sleep 10
+                  docker stack deploy -c infra/stacks/portainer/docker-compose.yml portainer
+                  sleep 10
+                  docker stack deploy -c infra/stacks/databases/docker-compose.yml databases
+                  sleep 30
+                  docker stack deploy -c infra/stacks/authbrasil-cnpj/docker-compose.yml authbrasil
+                elif [ "$ACTION" = "status" ]; then
+                  docker stack ls
+                  docker service ls
+                fi
+                ;;
+              
+              traefik)
+                cd infra/stacks/traefik
+                [ "$ACTION" = "deploy" ] && docker stack deploy -c docker-compose.yml traefik
+                [ "$ACTION" = "logs" ] && docker service logs traefik_traefik --tail 100
+                ;;
+              
+              portainer)
+                cd infra/stacks/portainer
+                [ "$ACTION" = "deploy" ] && docker stack deploy -c docker-compose.yml portainer
+                [ "$ACTION" = "logs" ] && docker service logs portainer_portainer --tail 100
+                ;;
+              
+              databases)
+                cd infra/stacks/databases
+                [ "$ACTION" = "deploy" ] && docker stack deploy -c docker-compose.yml databases
+                [ "$ACTION" = "logs" ] && docker service logs databases_postgres --tail 100
+                ;;
+              
+              authbrasil)
+                # Build nova imagem
+                cd backend
+                docker build -t authbrasil/api:latest .
+                
+                cd ../infra/stacks/authbrasil-cnpj
+                
+                if [ "$ACTION" = "deploy" ] || [ "$ACTION" = "update" ]; then
+                  docker stack deploy -c docker-compose.yml authbrasil
+                elif [ "$ACTION" = "logs" ]; then
+                  docker service logs authbrasil_api --tail 100
+                fi
+                ;;
+            esac
+            
+            echo "✅ Ação concluída!"
+          ENDSSH
+
+      - name: Notificar resultado
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Deploy realizado com sucesso!"
+          else
+            echo "❌ Falha no deploy"
+            exit 1
+          fi
