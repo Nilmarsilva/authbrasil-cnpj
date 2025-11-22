@@ -132,7 +132,8 @@ $RECYCLE.BIN/
 /data/etl/
 *.zip
 *.csv
-*.txt
+/data/**/*.txt
+SENHAS*.txt
 
 # Secrets e configurações sensíveis
 secrets.yml
