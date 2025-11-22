@@ -4,7 +4,7 @@ CNPJ data models from Receita Federal
 """
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Date, DateTime, Index
+from sqlalchemy import Column, Integer, String, Date, DateTime, Index, ForeignKey
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -37,7 +37,7 @@ class Estabelecimento(Base):
     __tablename__ = "estabelecimentos"
     
     id = Column(Integer, primary_key=True, index=True)
-    cnpj_basico = Column(String(8), index=True, nullable=False)
+    cnpj_basico = Column(String(8), ForeignKey("empresas.cnpj_basico"), index=True, nullable=False)
     cnpj_ordem = Column(String(4), nullable=False)
     cnpj_dv = Column(String(2), nullable=False)
     cnpj_completo = Column(String(14), unique=True, index=True, nullable=False)
@@ -95,7 +95,7 @@ class Socio(Base):
     __tablename__ = "socios"
     
     id = Column(Integer, primary_key=True, index=True)
-    cnpj_basico = Column(String(8), index=True, nullable=False)
+    cnpj_basico = Column(String(8), ForeignKey("empresas.cnpj_basico"), index=True, nullable=False)
     identificador_socio = Column(String(1), nullable=True)
     nome_socio = Column(String, nullable=True)
     cpf_cnpj_socio = Column(String(14), nullable=True)
