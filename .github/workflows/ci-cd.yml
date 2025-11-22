@@ -28,7 +28,45 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
-          ssh $VPS_USER@$VPS_HOST << 'ENDSSH'
+          # Detectar o que mudou
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+          echo "📝 Arquivos alterados:"
+          echo "$CHANGED_FILES"
+          
+          # Flags de deploy
+          DEPLOY_BACKEND=false
+          DEPLOY_FRONTEND=false
+          DEPLOY_DATABASES=false
+          DEPLOY_TRAEFIK=false
+          DEPLOY_PORTAINER=false
+          
+          # Detectar mudanças
+          if echo "$CHANGED_FILES" | grep -q "^backend/\|^infra/stacks/authbrasil-cnpj/"; then
+            DEPLOY_BACKEND=true
+            echo "✅ Backend alterado - será deployado"
+          fi
+          
+          if echo "$CHANGED_FILES" | grep -q "^frontend/"; then
+            DEPLOY_FRONTEND=true
+            echo "✅ Frontend alterado - será deployado"
+          fi
+          
+          if echo "$CHANGED_FILES" | grep -q "^infra/stacks/databases/"; then
+            DEPLOY_DATABASES=true
+            echo "✅ Databases alterado - será deployado"
+          fi
+          
+          if echo "$CHANGED_FILES" | grep -q "^infra/stacks/traefik/"; then
+            DEPLOY_TRAEFIK=true
+            echo "✅ Traefik alterado - será deployado"
+          fi
+          
+          if echo "$CHANGED_FILES" | grep -q "^infra/stacks/portainer/"; then
+            DEPLOY_PORTAINER=true
+            echo "✅ Portainer alterado - será deployado"
+          fi
+          
+          ssh $VPS_USER@$VPS_HOST << ENDSSH
             set -e
             
             echo "🚀 Iniciando deploy automático..."
@@ -37,7 +75,7 @@ jobs:
             cd /opt/authbrasil/authbrasil-cnpj
             
             # Configurar SSH para git
-            eval "$(ssh-agent -s)" > /dev/null
+            eval "\$(ssh-agent -s)" > /dev/null
             ssh-add ~/.ssh/github_deploy_key 2>/dev/null
             
             # Atualizar código
@@ -48,13 +86,13 @@ jobs:
             echo "⚙️ Configurando variáveis..."
             
             # Databases .env
-            cat > infra/stacks/databases/.env << 'EOF'
+            cat > infra/stacks/databases/.env << 'ENVEOF'
           REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
           PGADMIN_EMAIL=admin@authbrasil.com.br
-          EOF
+          ENVEOF
             
             # AuthBrasil .env  
-            cat > infra/stacks/authbrasil-cnpj/.env << 'EOF'
+            cat > infra/stacks/authbrasil-cnpj/.env << 'ENVEOF'
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
           SECRET_KEY=${{ secrets.SECRET_KEY }}
@@ -63,34 +101,53 @@ jobs:
           STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }}
           STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
           SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}
-          EOF
+          ENVEOF
             
-            # Build API
-            echo "🏗️ Building API..."
-            cd backend
-            docker build -t authbrasil/api:latest . || {
-              echo "❌ Erro no build da API"
-              exit 1
-            }
+            # Deploy condicional
+            if [ "$DEPLOY_TRAEFIK" = "true" ]; then
+              echo "⚡ Deploying Traefik..."
+              cd /opt/authbrasil/authbrasil-cnpj/infra/stacks/traefik
+              docker stack deploy -c docker-compose.yml traefik
+            fi
             
-            # Run migrations
-            echo "📊 Executando migrations..."
-            docker run --rm \
-              --network network_public \
-              -e DATABASE_URL=postgresql://authbrasil_user:${{ secrets.DB_PASSWORD }}@postgres:5432/authbrasil_cnpj \
-              authbrasil/api:latest \
-              alembic upgrade head || echo "⚠️ Migrations já executadas ou erro"
+            if [ "$DEPLOY_PORTAINER" = "true" ]; then
+              echo "🐳 Deploying Portainer..."
+              cd /opt/authbrasil/authbrasil-cnpj/infra/stacks/portainer
+              docker stack deploy -c docker-compose.yml portainer
+            fi
             
-            # Deploy stacks
-            cd /opt/authbrasil/authbrasil-cnpj
+            if [ "$DEPLOY_DATABASES" = "true" ]; then
+              echo "🗄️ Deploying Databases..."
+              cd /opt/authbrasil/authbrasil-cnpj/infra/stacks/databases
+              docker stack deploy -c docker-compose.yml databases
+            fi
             
-            echo "📦 Deploying Databases..."
-            cd infra/stacks/databases
-            docker stack deploy -c docker-compose.yml databases
+            if [ "$DEPLOY_BACKEND" = "true" ]; then
+              echo "🏗️ Building API..."
+              cd /opt/authbrasil/authbrasil-cnpj/backend
+              docker build -t authbrasil/api:latest . || {
+                echo "❌ Erro no build da API"
+                exit 1
+              }
+              
+              echo "📊 Executando migrations..."
+              docker run --rm \
+                --network network_public \
+                -e DATABASE_URL=postgresql://authbrasil_user:${{ secrets.DB_PASSWORD }}@postgres:5432/authbrasil_cnpj \
+                authbrasil/api:latest \
+                alembic upgrade head || echo "⚠️ Migrations já executadas"
+              
+              echo "🚀 Deploying API..."
+              cd /opt/authbrasil/authbrasil-cnpj/infra/stacks/authbrasil-cnpj
+              docker stack deploy -c docker-compose.yml authbrasil
+            fi
             
-            echo "🚀 Deploying API..."
-            cd /opt/authbrasil/authbrasil-cnpj/infra/stacks/authbrasil-cnpj
-            docker stack deploy -c docker-compose.yml authbrasil
+            if [ "$DEPLOY_FRONTEND" = "true" ]; then
+              echo "🎨 Building Frontend..."
+              cd /opt/authbrasil/authbrasil-cnpj/frontend
+              # TODO: Build e deploy do Next.js quando estiver pronto
+              echo "⚠️ Frontend ainda não implementado"
+            fi
             
             echo ""
             echo "✅ Deploy completo!"
