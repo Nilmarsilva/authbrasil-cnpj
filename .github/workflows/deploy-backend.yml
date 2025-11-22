@@ -21,20 +21,20 @@ jobs:
           set -e
           
           echo "📦 Copiando código para /root/backend..."
-          rm -rf /root/backend_backup
+          sudo rm -rf /root/backend_backup
           if [ -d "/root/backend" ]; then
-            cp -r /root/backend /root/backend_backup
+            sudo cp -r /root/backend /root/backend_backup
           fi
           
           # Copiar novo código
-          rsync -av --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' backend/ /root/backend/
+          sudo rsync -av --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' backend/ /root/backend/
           
           echo "🏗️ Building API image..."
           cd /root/backend
-          docker build -t authbrasil/api:latest .
+          sudo docker build -t authbrasil/api:latest .
           
           echo "📊 Running migrations..."
-          docker run --rm --user root \
+          sudo docker run --rm --user root \
             --network network_public \
             -e DATABASE_URL=postgresql://authbrasil_user:${{ secrets.DB_PASSWORD }}@postgres:5432/authbrasil_cnpj \
             -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
@@ -47,19 +47,19 @@ jobs:
             authbrasil/api:latest python -m alembic upgrade head || echo "⚠️ Migrations já executadas"
           
           echo "🚀 Deploying stack..."
-          docker stack deploy -c /root/docker-compose.backend.yml authbrasil
+          sudo docker stack deploy -c /root/docker-compose.backend.yml authbrasil
           
           echo "🔄 Rolling update..."
           sleep 5
-          docker service update --force authbrasil_api
+          sudo docker service update --force authbrasil_api
           
           echo "⏳ Aguardando service atualizar..."
           sleep 15
           
           echo "🧹 Limpando..."
-          docker container prune -f
-          docker image prune -f
+          sudo docker container prune -f
+          sudo docker image prune -f
           
           echo "✅ Backend deployed successfully!"
           echo "📊 Status:"
-          docker service ls
+          sudo docker service ls
