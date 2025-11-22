@@ -48,6 +48,11 @@ jobs:
             cd /opt/authbrasil/authbrasil-cnpj
             
             echo "🔄 Atualizando código..."
+            
+            # Configurar SSH para git
+            eval "$(ssh-agent -s)"
+            ssh-add ~/.ssh/github_deploy_key 2>/dev/null
+            
             git pull origin main
             
             # Detectar quais stacks precisam de update
