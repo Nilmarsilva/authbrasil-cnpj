@@ -27,6 +27,26 @@ async def lifespan(app: FastAPI):
     print(f"Shutting down {settings.PROJECT_NAME}")
 
 
+# OpenAPI tags metadata
+tags_metadata = [
+    {
+        "name": "health",
+        "description": "Health check e status da API",
+    },
+    {
+        "name": "cnpj",
+        "description": "Consultas de CNPJ e dados corporativos",
+    },
+    {
+        "name": "auth",
+        "description": "Autenticação e gerenciamento de tokens",
+    },
+    {
+        "name": "user",
+        "description": "Gerenciamento de usuários e perfis",
+    },
+]
+
 # Create FastAPI application
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -35,6 +55,16 @@ app = FastAPI(
     docs_url=f"{settings.API_V1_STR}/docs",
     redoc_url=f"{settings.API_V1_STR}/redoc",
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    openapi_tags=tags_metadata,
+    contact={
+        "name": "AuthBrasil Suporte",
+        "email": "suporte@authbrasil.com.br",
+        "url": "https://authbrasil.app.br",
+    },
+    license_info={
+        "name": "Proprietary",
+        "url": "https://authbrasil.app.br/termos",
+    },
     lifespan=lifespan,
 )
 

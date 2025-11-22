@@ -1,22 +1,14 @@
-import { Header } from "@/components/layout/Header"
-import { Footer } from "@/components/layout/Footer"
+import { Sidebar } from "@/components/docs/Sidebar"
 import { Code, Key, Lock, Zap, CheckCircle, Database, Shield } from "lucide-react"
 import Link from "next/link"
 
 export default function DocsPage() {
   return (
-    <div className="min-h-screen bg-white">
-      <Header />
+    <div className="min-h-screen bg-white flex">
+      <Sidebar />
       
-      <main className="pt-24 pb-20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            {/* Breadcrumb */}
-            <nav className="mb-8 text-sm text-gray-600">
-              <Link href="/" className="hover:text-emerald-600">Home</Link>
-              <span className="mx-2">/</span>
-              <span className="text-gray-900 font-medium">Documentação</span>
-            </nav>
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-8 py-12">
 
             {/* Visão Geral */}
             <section className="mb-16">
@@ -331,11 +323,8 @@ export default function DocsPage() {
                 </Link>
               </div>
             </section>
-          </div>
         </div>
       </main>
-
-      <Footer />
     </div>
   )
 }
