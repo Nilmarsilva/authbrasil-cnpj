@@ -1,0 +1,142 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🔍 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: 📦 Install dependencies (with dev for build)
+        working-directory: ./backend
+        run: npm ci
+
+      - name: 🏗️ Build TypeScript
+        working-directory: ./backend
+        run: npm run build
+
+      - name: 📦 Install production dependencies
+        working-directory: ./backend
+        run: |
+          rm -rf node_modules
+          npm ci --omit=dev
+
+      - name: 📂 Create deployment package
+        run: |
+          cd backend
+          tar --exclude='.env' --exclude='src' --exclude='*.ts' --exclude='tsconfig.json' --exclude='node_modules' -czf ../backend-deploy.tar.gz .
+
+      - name: 🚀 Deploy to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "backend-deploy.tar.gz"
+          target: "/tmp/"
+
+      - name: 🔄 Update Docker Service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /root
+            
+            # LIMPAR dist/ antigo antes de extrair novo build
+            echo "🧹 Limpando dist/ antigo..."
+            rm -rf backend/dist
+            
+            tar -xzf /tmp/backend-deploy.tar.gz -C backend/
+            rm /tmp/backend-deploy.tar.gz
+            
+            # Instalar dependências no Alpine (dependências nativas)
+            docker run --rm -v /root/backend:/app -w /app node:20-alpine sh -c "npm install --omit=dev"
+            
+            # Atualizar docker-compose para produção
+            cat > /root/docker/docker-compose.backend.yml << 'EOFYML'
+            version: '3.8'
+            
+            services:
+              api:
+                image: node:20-alpine
+                working_dir: /app
+                command: node dist/server.js
+                environment:
+                  NODE_ENV: production
+                env_file:
+                  - /root/backend/.env
+                volumes:
+                  - /root/backend:/app
+                networks:
+                  - traefik-public
+                deploy:
+                  mode: replicated
+                  replicas: 1
+                  placement:
+                    constraints:
+                      - node.role == manager
+                  restart_policy:
+                    condition: on-failure
+                    delay: 10s
+                    max_attempts: 5
+                  labels:
+                    - traefik.enable=true
+                    - "traefik.http.routers.api.rule=Host(\`api.datamoura.com.br\`)"
+                    - traefik.http.routers.api.entrypoints=websecure
+                    - traefik.http.routers.api.tls.certresolver=letsencryptresolver
+                    - traefik.http.services.api.loadbalancer.server.port=3001
+                    - traefik.docker.network=traefik-public
+                  resources:
+                    limits:
+                      cpus: '2'
+                      memory: 4G
+                    reservations:
+                      cpus: '1'
+                      memory: 2G
+            
+            networks:
+              traefik-public:
+                external: true
+            EOFYML
+            
+            # Deploy stack
+            docker stack deploy -c /root/docker/docker-compose.backend.yml backend
+            
+            # ROLLING UPDATE: Sobe novo container, aguarda, derruba antigo
+            echo "🔄 Rolling update backend..."
+            sleep 5
+            docker service update \
+              --force \
+              --update-parallelism 1 \
+              --update-delay 10s \
+              --update-order start-first \
+              backend_api
+            
+            # Aguardar service atualizar
+            sleep 15
+            
+            # Limpar containers parados
+            docker container prune -f
+            
+            # Limpar imagens não utilizadas
+            docker image prune -f
+            
+            echo "✅ Backend deployed and cleaned successfully!"

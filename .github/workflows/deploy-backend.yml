@@ -1,0 +1,114 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'infra/stacks/authbrasil-cnpj/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🔍 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📂 Create deployment package
+        run: |
+          cd backend
+          tar --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' --exclude='htmlcov' -czf ../backend-deploy.tar.gz .
+
+      - name: 🚀 Deploy Backend to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "backend-deploy.tar.gz"
+          target: "/tmp/"
+
+      - name: 📂 Deploy Stack Config
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "infra/stacks/authbrasil-cnpj/*"
+          target: "/tmp/"
+          strip_components: 2
+
+      - name: 🔄 Build & Update Docker Service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            
+            echo "📦 Extraindo código..."
+            cd /opt/authbrasil/authbrasil-cnpj
+            
+            # Backup
+            rm -rf backend_backup
+            cp -r backend backend_backup
+            
+            # Extrair novo código
+            tar -xzf /tmp/backend-deploy.tar.gz -C backend/
+            rm /tmp/backend-deploy.tar.gz
+            
+            # Copiar stack config
+            cp /tmp/docker-compose.yml infra/stacks/authbrasil-cnpj/
+            rm -rf /tmp/docker-compose.yml
+            
+            echo "🏗️ Building API image..."
+            cd backend
+            docker build -t authbrasil/api:latest .
+            
+            echo "📊 Running migrations..."
+            docker run --rm \
+              --network network_public \
+              -e DATABASE_URL=postgresql://authbrasil_user:${{ secrets.DB_PASSWORD }}@postgres:5432/authbrasil_cnpj \
+              authbrasil/api:latest \
+              alembic upgrade head || echo "⚠️ Migrations já executadas"
+            
+            echo "⚙️ Criando .env..."
+            cd /opt/authbrasil/authbrasil-cnpj/infra/stacks/authbrasil-cnpj
+            cat > .env << 'EOF'
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+            STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+            STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
+            SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}
+            EOF
+            
+            echo "🚀 Deploying stack..."
+            docker stack deploy -c docker-compose.yml authbrasil
+            
+            echo "🔄 Rolling update..."
+            sleep 5
+            docker service update \
+              --force \
+              --update-parallelism 1 \
+              --update-delay 10s \
+              --update-order start-first \
+              authbrasil_api
+            
+            echo "⏳ Aguardando service atualizar..."
+            sleep 15
+            
+            echo "🧹 Limpando..."
+            docker container prune -f
+            docker image prune -af --filter "dangling=true"
+            
+            echo "✅ Backend deployed successfully!"
+            
+            echo "📊 Status dos serviços:"
+            docker service ls

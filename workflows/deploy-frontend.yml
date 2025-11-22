@@ -1,0 +1,101 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🔍 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Install dependencies
+        working-directory: ./frontend
+        run: |
+          rm -f package-lock.json
+          npm install
+
+      - name: 🏗️ Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: 📂 Create deployment package
+        run: |
+          cd frontend
+          tar --exclude='node_modules' --exclude='.git' -czf ../frontend-build.tar.gz .
+
+      - name: 🚀 Deploy to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "frontend-build.tar.gz"
+          target: "/tmp/"
+
+      - name: 🔄 Update Docker Service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /root
+            
+            # Backup e limpar pasta antiga
+            rm -rf frontend_backup
+            mv frontend frontend_backup
+            mkdir -p frontend
+            
+            # Extrair novo código
+            tar -xzf /tmp/frontend-build.tar.gz -C frontend/
+            rm /tmp/frontend-build.tar.gz
+            
+            # Instalar dependências no container Node 20 (compatível)
+            cd frontend
+            if [ ! -d "node_modules" ]; then
+              docker run --rm -v /root/frontend:/app -w /app node:20-alpine npm install
+            fi
+            
+            # LIMPAR cache do Vite e dist/ antigo
+            echo "🧹 Limpando cache do Vite..."
+            rm -rf node_modules/.vite
+            rm -rf dist
+            
+            # REBUILD do dist/ na VPS com .env.production (SEM CACHE!)
+            echo "🏗️ Building frontend na VPS (sem cache)..."
+            docker run --rm -v /root/frontend:/app -w /app node:20-alpine npm run build
+            
+            # ROLLING UPDATE: Sobe novo container, aguarda, derruba antigo
+            echo "🔄 Rolling update frontend..."
+            docker service update \
+              --force \
+              --update-parallelism 1 \
+              --update-delay 10s \
+              --update-order start-first \
+              frontend_web
+            
+            # Aguardar service atualizar
+            sleep 15
+            
+            # Limpar containers e imagens
+            docker container prune -f
+            docker image prune -f
+            
+            # Limpar backup após sucesso
+            cd /root
+            rm -rf frontend_backup
+            
+            echo "✅ Frontend deployed and cleaned successfully!"
