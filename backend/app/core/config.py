@@ -69,7 +69,12 @@ Obtenha sua API Key criando uma conta em [authbrasil.app.br](https://authbrasil.
     REDIS_URL: str = "redis://localhost:6379/0"
     
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "https://app.authbrasil.app.br",
+        "http://app.authbrasil.app.br"
+    ]
     
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
