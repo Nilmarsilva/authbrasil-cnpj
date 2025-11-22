@@ -34,17 +34,7 @@ jobs:
           source: "backend-deploy.tar.gz"
           target: "/tmp/"
 
-      - name: 📂 Deploy Stack Config
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          source: "infra/stacks/authbrasil-cnpj/*"
-          target: "/tmp/"
-          strip_components: 2
-
-      - name: 🔄 Build & Update Docker Service
+      - name:  Build & Update Docker Service
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -65,10 +55,6 @@ jobs:
             # Extrair novo código
             tar -xzf /tmp/backend-deploy.tar.gz -C /opt/authbrasil/authbrasil-cnpj/
             rm /tmp/backend-deploy.tar.gz
-            
-            # Copiar stack config
-            cp /tmp/docker-compose.yml infra/stacks/authbrasil-cnpj/
-            rm -rf /tmp/docker-compose.yml
             
             echo "🏗️ Building API image..."
             cd backend
