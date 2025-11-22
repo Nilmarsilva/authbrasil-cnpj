@@ -19,8 +19,11 @@ jobs:
 
       - name: 📂 Create deployment package
         run: |
-          cd backend
-          tar --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' --exclude='htmlcov' -czf ../backend-deploy.tar.gz .
+          # Verificar estrutura
+          ls -la backend/
+          
+          # Criar pacote incluindo TUDO do backend
+          tar -czf backend-deploy.tar.gz backend/
 
       - name: 🚀 Deploy Backend to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -55,10 +58,12 @@ jobs:
             
             # Backup
             rm -rf backend_backup
-            cp -r backend backend_backup
+            if [ -d "backend" ]; then
+              cp -r backend backend_backup
+            fi
             
             # Extrair novo código
-            tar -xzf /tmp/backend-deploy.tar.gz -C backend/
+            tar -xzf /tmp/backend-deploy.tar.gz -C /opt/authbrasil/authbrasil-cnpj/
             rm /tmp/backend-deploy.tar.gz
             
             # Copiar stack config
