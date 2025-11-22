@@ -1,40 +1,12 @@
 import Link from "next/link"
-import { ArrowRight, CheckCircle, Zap, Shield, TrendingUp, Database, Code, BarChart3, Lock, Globe, Sparkles } from "lucide-react"
+import { Header } from "@/components/layout/Header"
+import { Footer } from "@/components/layout/Footer"
+import { ArrowRight, CheckCircle, Zap, Shield, Database, Code, BarChart3, Lock, Sparkles } from "lucide-react"
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-lg border-b border-gray-200/50 z-50">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="text-2xl font-bold bg-gradient-to-r from-emerald-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                AuthBrasil CNPJ
-              </div>
-              <a 
-                href="https://authbrasil.com.br" 
-                target="_blank"
-                className="text-xs text-gray-500 hover:text-emerald-600 transition flex items-center gap-1"
-              >
-                <span className="hidden sm:inline">por</span> AuthBrasil
-              </a>
-            </div>
-            <div className="hidden md:flex items-center gap-8">
-              <Link href="#features" className="text-gray-600 hover:text-emerald-600 transition">Recursos</Link>
-              <Link href="#pricing" className="text-gray-600 hover:text-emerald-600 transition">Preços</Link>
-              <Link href="#docs" className="text-gray-600 hover:text-emerald-600 transition">Documentação</Link>
-              <Link href="/login" className="text-gray-600 hover:text-emerald-600 transition">Login</Link>
-              <Link 
-                href="/signup"
-                className="bg-gradient-to-r from-emerald-600 to-blue-600 text-white px-6 py-2.5 rounded-full font-semibold hover:shadow-lg hover:scale-105 transition-all"
-              >
-                Começar Grátis
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Header />
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4">
@@ -194,54 +166,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-12 px-4">
-        <div className="container mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent mb-4">
-                AuthBrasil CNPJ
-              </div>
-              <p className="text-sm mb-3">
-                Consultas corporativas profissionais com dados oficiais da Receita Federal.
-              </p>
-              <a 
-                href="https://authbrasil.com.br" 
-                target="_blank"
-                className="text-xs text-gray-500 hover:text-emerald-400 transition inline-flex items-center gap-1"
-              >
-                <Globe className="w-3 h-3" />
-                Parte de AuthBrasil
-              </a>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Produto</h4>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="#" className="hover:text-white transition">Recursos</Link></li>
-                <li><Link href="#" className="hover:text-white transition">Preços</Link></li>
-                <li><Link href="#" className="hover:text-white transition">API</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Empresa</h4>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="#" className="hover:text-white transition">Sobre</Link></li>
-                <li><Link href="#" className="hover:text-white transition">Contato</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-white mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm">
-                <li><Link href="#" className="hover:text-white transition">Privacidade</Link></li>
-                <li><Link href="#" className="hover:text-white transition">Termos</Link></li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 pt-8 text-center text-sm">
-            <p>&copy; 2024 AuthBrasil CNPJ. Todos os direitos reservados.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }
