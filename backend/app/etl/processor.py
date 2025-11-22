@@ -27,6 +27,39 @@ class CSVProcessor:
     
     # Column mappings for each file type
     COLUMN_MAPPINGS = {
+        "CNAEs": {
+            0: "codigo",
+            1: "descricao",
+        },
+        "Municipios": {
+            0: "codigo",
+            1: "descricao",
+        },
+        "Naturezas": {
+            0: "codigo",
+            1: "descricao",
+        },
+        "Paises": {
+            0: "codigo",
+            1: "descricao",
+        },
+        "Qualificacoes": {
+            0: "codigo",
+            1: "descricao",
+        },
+        "Motivos": {
+            0: "codigo",
+            1: "descricao",
+        },
+        "Simples": {
+            0: "cnpj_basico",
+            1: "opcao_simples",
+            2: "data_opcao_simples",
+            3: "data_exclusao_simples",
+            4: "opcao_mei",
+            5: "data_opcao_mei",
+            6: "data_exclusao_mei",
+        },
         "Empresas": {
             0: "cnpj_basico",
             1: "razao_social",

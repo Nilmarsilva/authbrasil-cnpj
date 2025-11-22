@@ -20,6 +20,13 @@ class DatabaseLoader:
     
     # Mapping of file types to table names
     TABLE_MAPPINGS = {
+        "CNAEs": "cnaes",
+        "Municipios": "municipios",
+        "Naturezas": "naturezas",
+        "Paises": "paises",
+        "Qualificacoes": "qualificacoes",
+        "Motivos": "motivos",
+        "Simples": "simples",
         "Empresas": "empresas",
         "Estabelecimentos": "estabelecimentos",
         "Socios": "socios",
