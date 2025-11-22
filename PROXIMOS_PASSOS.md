@@ -25,7 +25,7 @@ Após criar o repositório no GitHub, execute os seguintes comandos:
 
 ```powershell
 # Substitua SEU_USERNAME pelo seu username do GitHub
-git remote add origin https://github.com/SEU_USERNAME/authbrasil-cnpj.git
+git remote add origin https://github.com/Nilmarsilva/authbrasil-cnpj.git
 
 # Fazer push do commit inicial
 git push -u origin main
@@ -34,7 +34,7 @@ git push -u origin main
 **Ou via SSH (se configurado):**
 
 ```powershell
-git remote add origin git@github.com:SEU_USERNAME/authbrasil-cnpj.git
+git remote add origin git@github.com:Nilmarsilva/authbrasil-cnpj.git
 git push -u origin main
 ```
 
@@ -46,8 +46,8 @@ git remote -v
 
 Deve mostrar:
 ```
-origin  https://github.com/SEU_USERNAME/authbrasil-cnpj.git (fetch)
-origin  https://github.com/SEU_USERNAME/authbrasil-cnpj.git (push)
+origin  https://github.com/Nilmarsilva/authbrasil-cnpj.git (fetch)
+origin  https://github.com/Nilmarsilva/authbrasil-cnpj.git (push)
 ```
 
 ## Estrutura Criada

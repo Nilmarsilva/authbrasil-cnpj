@@ -4,7 +4,7 @@ Plataforma de Consulta Corporativa Avançada - Dados atualizados, confiáveis e 
 
 ## Sobre o Projeto
 
-O AuthBrasil CNPJ é uma plataforma SaaS que oferece consulta profissional de dados corporativos brasileiros através de um painel web intuitivo e API REST robusta. Os dados são sincronizados mensalmente com a base oficial da Receita Federal.
+O AuthBrasil CNPJ é uma plataforma SaaS que oferece consulta profissional de dados corporativos brasileiros através de um painel web intuitivo e API REST robusta. Os dados são sincronizados mensalmente com a base oficial da Receita Federal, contendo CNPJ e também MEI.
 
 ## Proposta de Valor
 
