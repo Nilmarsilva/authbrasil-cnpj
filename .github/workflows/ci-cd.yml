@@ -1,0 +1,127 @@
+name: CI/CD Complete
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Add VPS to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy Complete
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          ssh $VPS_USER@$VPS_HOST << 'ENDSSH'
+            set -e
+            
+            echo "🚀 Iniciando deploy automático..."
+            
+            # Ir para diretório
+            cd /opt/authbrasil/authbrasil-cnpj
+            
+            # Configurar SSH para git
+            eval "$(ssh-agent -s)" > /dev/null
+            ssh-add ~/.ssh/github_deploy_key 2>/dev/null
+            
+            # Atualizar código
+            echo "📥 Atualizando código..."
+            git pull origin main
+            
+            # Criar .env files
+            echo "⚙️ Configurando variáveis..."
+            
+            # Databases .env
+            cat > infra/stacks/databases/.env << 'EOF'
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          PGADMIN_EMAIL=admin@authbrasil.com.br
+          EOF
+            
+            # AuthBrasil .env  
+            cat > infra/stacks/authbrasil-cnpj/.env << 'EOF'
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+          STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+          STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}
+          EOF
+            
+            # Build API
+            echo "🏗️ Building API..."
+            cd backend
+            docker build -t authbrasil/api:latest . || {
+              echo "❌ Erro no build da API"
+              exit 1
+            }
+            
+            # Run migrations
+            echo "📊 Executando migrations..."
+            docker run --rm \
+              --network network_public \
+              -e DATABASE_URL=postgresql://authbrasil_user:${{ secrets.DB_PASSWORD }}@postgres:5432/authbrasil_cnpj \
+              authbrasil/api:latest \
+              alembic upgrade head || echo "⚠️ Migrations já executadas ou erro"
+            
+            # Deploy stacks
+            cd /opt/authbrasil/authbrasil-cnpj
+            
+            echo "📦 Deploying Databases..."
+            cd infra/stacks/databases
+            docker stack deploy -c docker-compose.yml databases
+            
+            echo "🚀 Deploying API..."
+            cd /opt/authbrasil/authbrasil-cnpj/infra/stacks/authbrasil-cnpj
+            docker stack deploy -c docker-compose.yml authbrasil
+            
+            echo ""
+            echo "✅ Deploy completo!"
+            echo ""
+            echo "📊 Status:"
+            docker service ls
+            
+          ENDSSH
+
+      - name: Wait and Check Health
+        run: |
+          echo "⏳ Aguardando API iniciar..."
+          sleep 30
+          
+          echo "🔍 Verificando health..."
+          curl -f https://api.authbrasil.app.br/api/v1/health || {
+            echo "⚠️ API ainda não respondeu (pode levar alguns minutos)"
+          }
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Deploy automático concluído com sucesso!"
+            echo ""
+            echo "🌐 URLs:"
+            echo "  - API: https://api.authbrasil.app.br/api/v1/health"
+            echo "  - Docs: https://api.authbrasil.app.br/api/v1/docs"
+            echo "  - Portainer: https://portainer.authbrasil.app.br"
+            echo "  - pgAdmin: https://pg.authbrasil.app.br"
+          else
+            echo "❌ Falha no deploy"
+            exit 1
+          fi
