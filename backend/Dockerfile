@@ -33,6 +33,7 @@ COPY --from=builder /root/.local /home/appuser/.local
 COPY ./app ./app
 COPY ./alembic ./alembic
 COPY ./alembic.ini .
+COPY ./scripts ./scripts
 
 # Fix permissions
 RUN chown -R appuser:appuser /app /home/appuser/.local
