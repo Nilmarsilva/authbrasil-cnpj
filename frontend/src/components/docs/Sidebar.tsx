@@ -62,12 +62,12 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="w-64 bg-gray-950 border-r border-gray-800 h-screen sticky top-0 overflow-y-auto">
+    <aside className="w-64 bg-white border-r border-gray-200 h-[calc(100vh-4rem)] sticky top-16 overflow-y-auto">
       <div className="p-6">
-        <Link href="/" className="text-xl font-bold text-emerald-500 hover:text-emerald-400 transition">
+        <Link href="/" className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
           AuthBrasil CNPJ
         </Link>
-        <p className="text-xs text-gray-400 mt-1">Documentação</p>
+        <p className="text-xs text-gray-500 mt-1">Documentação</p>
       </div>
 
       <nav className="px-3 pb-6">
@@ -75,12 +75,12 @@ export function Sidebar() {
           <div key={section.title} className="mb-4">
             <button
               onClick={() => toggleSection(section.title)}
-              className="flex items-center justify-between w-full px-3 py-2 text-sm font-semibold text-gray-200 hover:bg-gray-800 rounded-lg transition"
+              className="flex items-center justify-between w-full px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-100 rounded-lg transition"
             >
               <span>{section.title}</span>
               {section.items && (
                 openSections.has(section.title) ? (
-                  <ChevronDown className="w-4 h-4 text-emerald-500" />
+                  <ChevronDown className="w-4 h-4 text-emerald-600" />
                 ) : (
                   <ChevronRight className="w-4 h-4 text-gray-500" />
                 )
@@ -93,7 +93,7 @@ export function Sidebar() {
                   <a
                     key={item.href}
                     href={item.href}
-                    className="block px-3 py-1.5 text-sm text-gray-400 hover:text-emerald-500 hover:bg-gray-800 rounded-lg transition"
+                    className="block px-3 py-1.5 text-sm text-gray-600 hover:text-emerald-600 hover:bg-gray-50 rounded-lg transition"
                   >
                     {item.title}
                   </a>
@@ -104,12 +104,12 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-gray-800 p-4">
+      <div className="border-t border-gray-200 p-4">
         <a
           href="https://api.authbrasil.app.br/api/v1/docs"
           target="_blank"
           rel="noopener noreferrer"
-          className="block text-sm text-gray-400 hover:text-emerald-500 transition"
+          className="block text-sm text-gray-600 hover:text-emerald-600 transition"
         >
           📖 Swagger API Docs
         </a>
