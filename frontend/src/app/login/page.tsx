@@ -2,17 +2,33 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Header } from "@/components/layout/Header"
+import { useAuth } from "@/contexts/AuthContext"
 import { ArrowRight, Mail, Lock } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+  
+  const { login } = useAuth()
+  const router = useRouter()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implementar autenticação com backend
-    console.log("Login:", { email, password })
+    setError("")
+    setLoading(true)
+    
+    try {
+      await login({ email, password })
+      router.push("/dashboard")
+    } catch (err: any) {
+      setError(err.message || "Erro ao fazer login")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -92,13 +108,21 @@ export default function LoginPage() {
                 </Link>
               </div>
 
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+
               {/* Submit Button */}
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-emerald-600 to-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-emerald-600 to-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
-                Entrar
-                <ArrowRight className="w-5 h-5" />
+                {loading ? "Entrando..." : "Entrar"}
+                {!loading && <ArrowRight className="w-5 h-5" />}
               </button>
             </form>
 
