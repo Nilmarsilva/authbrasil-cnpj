@@ -28,8 +28,8 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
-          # Detectar o que mudou
-          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+          # Detectar o que mudou (com fallback para primeiro commit)
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD 2>/dev/null || git diff-tree --no-commit-id --name-only -r HEAD)
           echo "📝 Arquivos alterados:"
           echo "$CHANGED_FILES"
           
