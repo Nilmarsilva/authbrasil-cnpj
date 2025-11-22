@@ -7,12 +7,19 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
-### Planejado
-- Estrutura inicial do backend FastAPI
-- Configuração do banco de dados PostgreSQL
-- Implementação do ETL manual
-- Endpoint GET /cnpj/{cnpj}
+### Em Desenvolvimento
+- Importação manual de dados da Receita Federal (ETL)
 - Sistema de autenticação JWT
+- Rate limiting
+- Cache Redis
+- Testes unitários
+
+### Implementado (não lançado)
+- Estrutura completa do backend FastAPI
+- Modelos SQLAlchemy para todas as tabelas
+- Endpoints básicos (/health, /cnpj)
+- Configuração Alembic para migrations
+- Docker Compose para desenvolvimento local
 
 ## [0.1.0] - 2024-11-22
 
