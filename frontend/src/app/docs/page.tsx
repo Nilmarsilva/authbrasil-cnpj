@@ -4,27 +4,27 @@ import Link from "next/link"
 
 export default function DocsPage() {
   return (
-    <div className="min-h-screen bg-white flex">
+    <div className="min-h-screen bg-gray-900 flex">
       <Sidebar />
       
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-8 py-12">
 
             {/* Visão Geral */}
-            <section className="mb-16">
-              <h1 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
+            <section id="visao-geral" className="mb-16 scroll-mt-8">
+              <h1 className="text-4xl md:text-5xl font-bold mb-4 text-white">
                 AuthBrasil CNPJ API
               </h1>
               
-              <p className="text-xl text-gray-600 mb-12">
+              <p className="text-xl text-gray-300 mb-12">
                 API completa para consultas de CNPJ automatizadas no Brasil
               </p>
 
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Visão Geral</h2>
+              <h2 className="text-2xl font-bold text-white mb-4">Visão Geral</h2>
               
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">O que é a AuthBrasil CNPJ API?</h3>
+              <h3 className="text-xl font-semibold text-white mb-4">O que é a AuthBrasil CNPJ API?</h3>
               
-              <p className="text-gray-700 mb-6 leading-relaxed">
+              <p className="text-gray-300 mb-6 leading-relaxed">
                 A AuthBrasil CNPJ API fornece acesso programático a dados oficiais da Receita Federal sobre empresas brasileiras. 
                 Com ela, você pode consultar informações completas de CNPJ, incluindo dados cadastrais, sócios, atividades econômicas e muito mais.
               </p>
@@ -54,8 +54,8 @@ export default function DocsPage() {
             </section>
 
             {/* Casos de Uso */}
-            <section className="mb-16">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Casos de Uso Principais</h3>
+            <section id="recursos" className="mb-16 scroll-mt-8">
+              <h3 className="text-2xl font-bold text-white mb-6">Casos de Uso Principais</h3>
               
               <div className="space-y-6">
                 <div className="border-l-4 border-emerald-500 pl-6">
@@ -88,8 +88,8 @@ export default function DocsPage() {
             </section>
 
             {/* Primeiros Passos */}
-            <section className="mb-16">
-              <h3 className="text-2xl font-bold text-gray-900 mb-6">Primeiros Passos</h3>
+            <section id="quick-start" className="mb-16 scroll-mt-8">
+              <h3 className="text-2xl font-bold text-white mb-6">Primeiros Passos</h3>
               
               <div className="space-y-4">
                 <div className="flex items-start gap-4 p-6 bg-gray-50 rounded-lg border border-gray-200">
