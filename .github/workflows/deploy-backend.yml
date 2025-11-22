@@ -16,115 +16,50 @@ jobs:
       - name: 🔍 Checkout code
         uses: actions/checkout@v4
 
-      - name: 📂 Create deployment package
+      - name: 🔄 Build & Deploy
         run: |
-          cd backend
-          tar --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' -czf ../backend-deploy.tar.gz .
-
-      - name: 🚀 Deploy to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          source: "backend-deploy.tar.gz"
-          target: "/tmp/"
-
-      - name: 🔄 Build & Update Docker Service
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            set -e
-            cd /root
-            
-            # Backup
-            echo "📦 Fazendo backup..."
-            rm -rf backend_backup
-            if [ -d "backend" ]; then
-              cp -r backend backend_backup
-            fi
-            
-            # Extrair novo código
-            echo "📥 Extraindo código..."
-            tar -xzf /tmp/backend-deploy.tar.gz -C backend/
-            rm /tmp/backend-deploy.tar.gz
-            
-            echo "🏗️ Building API image..."
-            cd /root/backend
-            docker build -t authbrasil/api:latest .
-            
-            echo "📊 Running migrations..."
-            docker run --rm --user root \
-              --network network_public \
-              -e DATABASE_URL=postgresql://authbrasil_user:${{ secrets.DB_PASSWORD }}@postgres:5432/authbrasil_cnpj \
-              -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
-              -e JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} \
-              -e REDIS_URL=redis://:${{ secrets.REDIS_PASSWORD }}@redis:6379/0 \
-              -e STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
-              -e STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }} \
-              -e STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }} \
-              -e SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }} \
-              authbrasil/api:latest python -m alembic upgrade head || echo "⚠️ Migrations já executadas"
-            
-            echo "📝 Criando docker-compose..."
-            cat > /root/docker-compose.backend.yml << 'EOFYML'
-            version: '3.8'
-            
-            services:
-              api:
-                image: authbrasil/api:latest
-                environment:
-                  - DATABASE_URL=postgresql://authbrasil_user:${{ secrets.DB_PASSWORD }}@postgres:5432/authbrasil_cnpj
-                  - SECRET_KEY=${{ secrets.SECRET_KEY }}
-                  - JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-                  - REDIS_URL=redis://:${{ secrets.REDIS_PASSWORD }}@redis:6379/0
-                  - STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
-                  - STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }}
-                  - STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
-                  - SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}
-                networks:
-                  - network_public
-                deploy:
-                  replicas: 2
-                  update_config:
-                    parallelism: 1
-                    delay: 10s
-                    order: start-first
-                  labels:
-                    - traefik.enable=true
-                    - traefik.http.routers.api.rule=Host(\`api.authbrasil.app.br\`)
-                    - traefik.http.routers.api.entrypoints=websecure
-                    - traefik.http.routers.api.tls.certresolver=letsencryptresolver
-                    - traefik.http.services.api.loadbalancer.server.port=8000
-                    - traefik.docker.network=network_public
-            
-            networks:
-              network_public:
-                external: true
-            EOFYML
-            
-            echo "🚀 Deploying stack..."
-            docker stack deploy -c /root/docker-compose.backend.yml authbrasil
-            
-            echo "🔄 Rolling update..."
-            sleep 5
-            docker service update \
-              --force \
-              --update-parallelism 1 \
-              --update-delay 10s \
-              --update-order start-first \
-              authbrasil_api
-            
-            echo "⏳ Aguardando service atualizar..."
-            sleep 15
-            
-            echo "🧹 Limpando..."
-            docker container prune -f
-            docker image prune -f
-            
-            echo "✅ Backend deployed successfully!"
-            echo "📊 Status:"
-            docker service ls
+          set -e
+          
+          echo "📦 Copiando código para /root/backend..."
+          rm -rf /root/backend_backup
+          if [ -d "/root/backend" ]; then
+            cp -r /root/backend /root/backend_backup
+          fi
+          
+          # Copiar novo código
+          rsync -av --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' backend/ /root/backend/
+          
+          echo "🏗️ Building API image..."
+          cd /root/backend
+          docker build -t authbrasil/api:latest .
+          
+          echo "📊 Running migrations..."
+          docker run --rm --user root \
+            --network network_public \
+            -e DATABASE_URL=postgresql://authbrasil_user:${{ secrets.DB_PASSWORD }}@postgres:5432/authbrasil_cnpj \
+            -e SECRET_KEY=${{ secrets.SECRET_KEY }} \
+            -e JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }} \
+            -e REDIS_URL=redis://:${{ secrets.REDIS_PASSWORD }}@redis:6379/0 \
+            -e STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }} \
+            -e STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }} \
+            -e STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }} \
+            -e SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }} \
+            authbrasil/api:latest python -m alembic upgrade head || echo "⚠️ Migrations já executadas"
+          
+          echo "🚀 Deploying stack..."
+          docker stack deploy -c /root/docker-compose.backend.yml authbrasil
+          
+          echo "🔄 Rolling update..."
+          sleep 5
+          docker service update --force authbrasil_api
+          
+          echo "⏳ Aguardando service atualizar..."
+          sleep 15
+          
+          echo "🧹 Limpando..."
+          docker container prune -f
+          docker image prune -f
+          
+          echo "✅ Backend deployed successfully!"
+          echo "📊 Status:"
+          docker service ls
