@@ -12,8 +12,41 @@ class Settings(BaseSettings):
     
     # Project Info
     PROJECT_NAME: str = "AuthBrasil CNPJ API"
-    PROJECT_DESCRIPTION: str = "API de consulta de dados corporativos brasileiros"
-    VERSION: str = "0.1.0"
+    PROJECT_DESCRIPTION: str = """
+## API completa para consultas de CNPJ automatizadas no Brasil
+
+Acesse dados oficiais da Receita Federal de forma programática.
+
+### Recursos Principais
+
+- 🔍 **Consultas por CNPJ** - Dados completos de empresas brasileiras
+- 📊 **Dados Estruturados** - Respostas em JSON padronizadas
+- ⚡ **Alta Performance** - Respostas em menos de 100ms
+- 🔒 **Segurança** - Autenticação via Bearer Token
+- 🔄 **Sempre Atualizado** - Sincronização mensal com Receita Federal
+
+### Autenticação
+
+Todas as requisições autenticadas devem incluir o header:
+
+```
+Authorization: Bearer SUA_API_KEY
+```
+
+Obtenha sua API Key criando uma conta em [authbrasil.app.br](https://authbrasil.app.br)
+
+### Rate Limits
+
+- **Starter:** 500 requisições/mês
+- **Pro:** 5.000 requisições/mês  
+- **Enterprise:** 50.000 requisições/mês
+
+### Suporte
+
+- **Email:** suporte@authbrasil.com.br
+- **Docs:** [docs.authbrasil.app.br](https://docs.authbrasil.app.br)
+"""
+    VERSION: str = "1.0.0"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     
