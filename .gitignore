@@ -62,6 +62,11 @@ yarn-error.log*
 *.env
 !.env.example
 
+# Senhas e secrets (NUNCA COMMITAR!)
+SENHAS_GERADAS.txt
+**/secrets.txt
+**/passwords.txt
+
 # IDEs
 .vscode/
 .idea/
