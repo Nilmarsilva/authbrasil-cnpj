@@ -68,7 +68,7 @@ jobs:
             
             # Usar a chave SSH existente
             eval "$(ssh-agent -s)"
-            ssh-add ~/.ssh/id_rsa_authbrasil 2>/dev/null || ssh-add ~/.ssh/id_rsa 2>/dev/null
+            ssh-add ~/.ssh/github_deploy_key 2>/dev/null || ssh-add ~/.ssh/id_rsa 2>/dev/null
             
             if [ -d "authbrasil-cnpj" ]; then
               cd authbrasil-cnpj
