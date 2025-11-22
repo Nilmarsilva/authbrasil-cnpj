@@ -11,6 +11,7 @@ from app.db.session import get_async_db
 from app.models.user import User
 from app.schemas.auth import UserLogin, UserSignup, Token, UserResponse
 from app.core.security import verify_password, get_password_hash, create_access_token
+from app.core.deps import get_current_user as get_current_user_dep
 
 router = APIRouter()
 
@@ -98,13 +99,11 @@ async def signup(
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user(
-    db: AsyncSession = Depends(get_async_db),
-    # TODO: Add JWT dependency
+async def get_me(
+    current_user: User = Depends(get_current_user_dep)
 ):
     """
     Get current user info
     Requires authentication
     """
-    # TODO: Extract user from JWT token
-    pass
+    return current_user
