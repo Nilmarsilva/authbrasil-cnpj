@@ -61,6 +61,9 @@ jobs:
             echo "🗑️  Removendo imagens antigas de authbrasil/api..."
             docker images authbrasil/api --format "{{.ID}}" | tail -n +3 | xargs -r docker rmi -f 2>/dev/null || true
             
+            echo "🗑️  Removendo imagens antigas de authbrasil/frontend..."
+            docker images authbrasil/frontend --format "{{.ID}}" | tail -n +3 | xargs -r docker rmi -f 2>/dev/null || true
+            
             # Remover imagens dangling
             echo "🗑️  Removendo imagens órfãs..."
             docker image prune -f
@@ -69,11 +72,13 @@ jobs:
             echo ""
             
             # ==========================================
-            # 3. BUILD NOVA IMAGEM
+            # 3. BUILD NOVAS IMAGENS
             # ==========================================
-            echo "🔨 [3/6] Buildando nova imagem do backend..."
-            cd /root/authbrasil-cnpj/backend
+            echo "🔨 [3/6] Buildando imagens (backend + frontend)..."
             
+            # Backend
+            echo "📦 Building backend..."
+            cd /root/authbrasil-cnpj/backend
             docker build \
               --no-cache \
               --label "app=authbrasil-api" \
@@ -83,7 +88,20 @@ jobs:
               -t authbrasil/api:$(git rev-parse --short HEAD) \
               .
             
-            echo "✅ Build concluído"
+            # Frontend
+            echo "📦 Building frontend..."
+            cd /root/authbrasil-cnpj/frontend
+            docker build \
+              --no-cache \
+              --build-arg NEXT_PUBLIC_API_URL=https://api.authbrasil.app.br/api/v1 \
+              --label "app=authbrasil-frontend" \
+              --label "version=$(git rev-parse --short HEAD)" \
+              --label "build-date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+              -t authbrasil/frontend:latest \
+              -t authbrasil/frontend:$(git rev-parse --short HEAD) \
+              .
+            
+            echo "✅ Builds concluídos"
             echo ""
             
             # ==========================================
@@ -157,5 +175,6 @@ jobs:
             echo ""
             echo "📌 Commit: $(git rev-parse --short HEAD)"
             echo "📌 Data: $(date)"
+            echo ""
             echo "📌 Imagens ativas:"
-            docker images authbrasil/api --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}"
+            docker images authbrasil --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}"
