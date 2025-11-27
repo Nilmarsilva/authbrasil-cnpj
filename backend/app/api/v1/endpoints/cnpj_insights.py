@@ -8,10 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 
-from app.core.deps import get_db
-from app.models.estabelecimento import Estabelecimento
-from app.models.empresa import Empresa
-from app.models.socio import Socio
+from app.db.session import get_async_db
+from app.models.empresa import Empresa, Estabelecimento, Socio
 
 router = APIRouter()
 
@@ -21,7 +19,7 @@ async def get_filiais(
     cnpj_basico: str,
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Busca todas as filiais de uma empresa pelo cnpj_basico.
@@ -119,7 +117,7 @@ async def get_empresas_socio(
     cpf_cnpj: str,
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Busca todas as empresas em que um CPF/CNPJ participa como sócio.
@@ -206,7 +204,7 @@ async def get_empresas_socio_por_nome(
     nome: str,
     skip: int = 0,
     limit: int = 50,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Busca empresas por nome do sócio (busca parcial).

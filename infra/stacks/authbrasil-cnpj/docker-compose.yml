@@ -93,6 +93,32 @@ services:
       retries: 3
       start_period: 40s
 
+  frontend:
+    image: authbrasil/frontend:latest
+    environment:
+      NEXT_PUBLIC_API_URL: https://api.authbrasil.app.br/api/v1
+    networks:
+      - network_public
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=network_public"
+        - "traefik.http.routers.authbrasil-frontend.rule=Host(`app.authbrasil.app.br`)"
+        - "traefik.http.routers.authbrasil-frontend.entrypoints=websecure"
+        - "traefik.http.routers.authbrasil-frontend.priority=1"
+        - "traefik.http.routers.authbrasil-frontend.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.authbrasil-frontend.service=authbrasil-frontend"
+        - "traefik.http.services.authbrasil-frontend.loadbalancer.server.port=3000"
+
 networks:
   network_public:
     external: true
