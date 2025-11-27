@@ -31,6 +31,53 @@ export interface UserResponse {
   is_verified: boolean
 }
 
+export interface ETLStartRequest {
+  force?: boolean
+  skip_download?: boolean
+  tables?: string[]
+}
+
+export interface ETLValidationResponse {
+  can_proceed: boolean
+  warnings: string[]
+  errors: string[]
+  disk_free_gb: number
+  disk_used_gb: number
+  postgres_running: boolean
+  tables_exist: boolean
+}
+
+export interface ETLStatusResponse {
+  job_id: string
+  status: string
+  current_step?: string
+  current_file?: string
+  current_table?: string
+  progress_percent: number
+  files_processed: number
+  files_total: number
+  records_imported: number
+  disk_free_gb?: number
+  disk_used_gb?: number
+  started_at?: string
+  completed_at?: string
+  elapsed_seconds: number
+  estimated_remaining_seconds?: number
+  error_message?: string
+  warnings: string[]
+}
+
+export interface ETLStartResponse {
+  status: string
+  job_id: string
+  message: string
+}
+
+export interface ETLLogsResponse {
+  logs: string[]
+  total_lines: number
+}
+
 class ApiClient {
   private baseURL: string
 
@@ -91,6 +138,26 @@ class ApiClient {
   // CNPJ endpoints
   async consultarCNPJ(cnpj: string): Promise<any> {
     return this.request(`/cnpj/${cnpj}`)
+  }
+
+  // ETL endpoints (admin only)
+  async validateETL(): Promise<ETLValidationResponse> {
+    return this.request<ETLValidationResponse>('/etl/validate')
+  }
+
+  async startETL(data: ETLStartRequest): Promise<ETLStartResponse> {
+    return this.request<ETLStartResponse>('/etl/start', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async getETLStatus(): Promise<ETLStatusResponse> {
+    return this.request<ETLStatusResponse>('/etl/status')
+  }
+
+  async getETLLogs(lines: number = 100): Promise<ETLLogsResponse> {
+    return this.request<ETLLogsResponse>(`/etl/logs?lines=${lines}`)
   }
 }
 
