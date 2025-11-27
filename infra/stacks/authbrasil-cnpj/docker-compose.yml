@@ -3,6 +3,8 @@ version: "3.8"
 services:
   api:
     image: authbrasil/api:latest
+    env_file:
+      - .env
     environment:
       # Environment
       ENVIRONMENT: production
@@ -89,6 +91,8 @@ services:
 
   frontend:
     image: authbrasil/frontend:latest
+    env_file:
+      - .env
     environment:
       NEXT_PUBLIC_API_URL: https://api.authbrasil.app.br/api/v1
     networks:
