@@ -1,0 +1,56 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🚀 Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            
+            echo "📦 Atualizando código..."
+            cd /root/authbrasil-cnpj
+            git pull origin main
+            
+            echo "🔨 Building backend..."
+            cd /root/authbrasil-cnpj/backend
+            docker build -t authbrasil/api:latest .
+            
+            echo "📝 Criando .env para a stack..."
+            cd /root/authbrasil-cnpj/infra/stacks/authbrasil-cnpj
+            cat > .env << 'ENVEOF'
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+            STRIPE_SECRET_KEY=sk_test_temp
+            STRIPE_PUBLISHABLE_KEY=pk_test_temp
+            STRIPE_WEBHOOK_SECRET=whsec_temp
+            SENDGRID_API_KEY=SG_temp
+            ENVEOF
+            
+            echo "🚀 Fazendo deploy da stack..."
+            docker stack deploy -c docker-compose.yml authbrasil
+            
+            echo "⏳ Aguardando serviços iniciarem..."
+            sleep 15
+            
+            echo "📊 Status dos serviços:"
+            docker service ls
+            
+            echo "✅ Deploy concluído!"
+            
+            echo "📋 Logs do backend (últimas 30 linhas):"
+            docker service logs authbrasil_api --tail 30

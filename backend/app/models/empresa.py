@@ -46,7 +46,7 @@ class Estabelecimento(Base):
     )
     
     id = Column(Integer, primary_key=True, index=True)
-    cnpj_basico = Column(String(8), nullable=False, index=True, comment="CNPJ básico (liga com empresas)")
+    cnpj_basico = Column(String(8), ForeignKey('empresas.cnpj_basico'), nullable=False, index=True, comment="CNPJ básico (liga com empresas)")
     cnpj_ordem = Column(String(4), nullable=False, comment="Ordem do estabelecimento")
     cnpj_dv = Column(String(2), nullable=False, comment="Dígito verificador")
     cnpj_completo = Column(String(14), unique=True, nullable=False, comment="CNPJ completo (básico+ordem+dv)")
@@ -89,13 +89,25 @@ class Socio(Base):
     
     __tablename__ = "socios"
     
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    empresa = relationship("Empresa", back_populates="socios")
-    
-    # Index for searches
     __table_args__ = (
         Index('idx_socio_nome', 'nome_socio'),
         Index('idx_socio_cpf_cnpj', 'cpf_cnpj_socio'),
     )
+    
+    id = Column(Integer, primary_key=True, index=True)
+    cnpj_basico = Column(String(8), ForeignKey('empresas.cnpj_basico'), nullable=False, index=True, comment="CNPJ básico da empresa")
+    identificador_socio = Column(String(1), nullable=True, comment="1=PF, 2=PJ, 3=Estrangeiro")
+    nome_socio = Column(String, nullable=True, index=True, comment="Nome ou razão social do sócio")
+    cpf_cnpj_socio = Column(String(14), nullable=True, index=True, comment="CPF/CNPJ do sócio")
+    qualificacao_socio = Column(String(2), nullable=True, comment="Código da qualificação")
+    data_entrada_sociedade = Column(String(8), nullable=True, comment="Data entrada (YYYYMMDD)")
+    pais = Column(String(3), nullable=True, comment="Código do país")
+    representante_legal = Column(String, nullable=True, comment="CPF do representante legal")
+    nome_representante = Column(String, nullable=True, comment="Nome do representante")
+    qualificacao_representante = Column(String(2), nullable=True, comment="Código qualificação representante")
+    faixa_etaria = Column(String(1), nullable=True, comment="Faixa etária do sócio")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    empresa = relationship("Empresa", back_populates="socios")

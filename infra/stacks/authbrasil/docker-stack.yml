@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  api:
+    image: authbrasil/api:latest
+    networks:
+      - network_public
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=network_public"
+        - "traefik.http.routers.api.rule=Host(`api.authbrasil.app.br`)"
+        - "traefik.http.routers.api.entrypoints=websecure"
+        - "traefik.http.routers.api.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.api.loadbalancer.server.port=8000"
+    environment:
+      - SECRET_KEY=2dedddaff60c04b3fa767ebc720a2dec4c94969be65cb9e4ff8f76e8a9b7e142
+      - JWT_SECRET_KEY=65248bd67bca837ae6e003075ce97a9bed277a8324eb1eb86e5b9160ad2d6c5e
+      - JWT_ALGORITHM=HS256
+      - DATABASE_URL=postgresql+asyncpg://authbrasil_user:xWxt64YrzAFWc3ylNHrAbMoF0Z8h_b6kCQT4aX8sdgM@postgres:5432/authbrasil_cnpj
+      - REDIS_URL=redis://:vezEgze0KAtTuvn20ITwme_Ud8--aXdB@redis:6379/0
+      - ENVIRONMENT=production
+      - DEBUG=false
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    image: authbrasil/frontend:latest
+    networks:
+      - network_public
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=network_public"
+        - "traefik.http.routers.frontend.rule=Host(`app.authbrasil.app.br`)"
+        - "traefik.http.routers.frontend.entrypoints=websecure"
+        - "traefik.http.routers.frontend.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=https://api.authbrasil.app.br/api/v1
+
+networks:
+  network_public:
+    external: true
+    name: network_public
