@@ -1,4 +1,4 @@
-name: Deploy to VPS
+name: 🚀 Deploy to Production VPS
 
 on:
   push:
@@ -6,52 +6,156 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  IMAGE_NAME: authbrasil/api
+  IMAGE_TAG: latest
+  STACK_NAME: authbrasil
+
 jobs:
   deploy:
+    name: Deploy Backend & Frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     
     steps:
-      - name: 🚀 Deploy via SSH
+      - name: 🔐 Deploy via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           password: ${{ secrets.VPS_PASSWORD }}
+          command_timeout: 15m
           script: |
             set -e
             
-            echo "📦 Atualizando código..."
+            echo "=========================================="
+            echo "🚀 AuthBrasil CNPJ - Production Deploy"
+            echo "=========================================="
+            echo ""
+            
+            # ==========================================
+            # 1. ATUALIZAR CÓDIGO
+            # ==========================================
+            echo "📦 [1/6] Atualizando código do repositório..."
             cd /root/authbrasil-cnpj
             git fetch origin main
             git reset --hard origin/main
+            echo "✅ Código atualizado para commit: $(git rev-parse --short HEAD)"
+            echo ""
             
-            echo "🔨 Building backend..."
+            # ==========================================
+            # 2. LIMPAR RECURSOS ANTIGOS
+            # ==========================================
+            echo "🧹 [2/6] Limpando recursos Docker antigos..."
+            
+            # Parar stack atual
+            docker stack rm authbrasil 2>/dev/null || true
+            echo "⏳ Aguardando stack ser removida..."
+            sleep 10
+            
+            # Remover containers parados
+            echo "🗑️  Removendo containers parados..."
+            docker container prune -f
+            
+            # Remover imagens não utilizadas (mantém últimas 2)
+            echo "🗑️  Removendo imagens antigas de authbrasil/api..."
+            docker images authbrasil/api --format "{{.ID}}" | tail -n +3 | xargs -r docker rmi -f 2>/dev/null || true
+            
+            # Remover imagens dangling
+            echo "🗑️  Removendo imagens órfãs..."
+            docker image prune -f
+            
+            echo "✅ Limpeza concluída"
+            echo ""
+            
+            # ==========================================
+            # 3. BUILD NOVA IMAGEM
+            # ==========================================
+            echo "🔨 [3/6] Buildando nova imagem do backend..."
             cd /root/authbrasil-cnpj/backend
-            docker build -t authbrasil/api:latest .
             
-            echo "📝 Criando .env para a stack..."
+            docker build \
+              --no-cache \
+              --label "app=authbrasil-api" \
+              --label "version=$(git rev-parse --short HEAD)" \
+              --label "build-date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+              -t authbrasil/api:latest \
+              -t authbrasil/api:$(git rev-parse --short HEAD) \
+              .
+            
+            echo "✅ Build concluído"
+            echo ""
+            
+            # ==========================================
+            # 4. CONFIGURAR ENVIRONMENT
+            # ==========================================
+            echo "📝 [4/6] Configurando variáveis de ambiente..."
             cd /root/authbrasil-cnpj/infra/stacks/authbrasil-cnpj
+            
             cat > .env << 'ENVEOF'
+            # Database
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            
+            # Redis
             REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+            
+            # Security
             SECRET_KEY=${{ secrets.SECRET_KEY }}
             JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-            STRIPE_SECRET_KEY=sk_test_temp
-            STRIPE_PUBLISHABLE_KEY=pk_test_temp
-            STRIPE_WEBHOOK_SECRET=whsec_temp
-            SENDGRID_API_KEY=SG_temp
+            
+            # External Services (Placeholder)
+            STRIPE_SECRET_KEY=sk_test_placeholder
+            STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
+            STRIPE_WEBHOOK_SECRET=whsec_placeholder
+            SENDGRID_API_KEY=SG_placeholder
             ENVEOF
             
-            echo "🚀 Fazendo deploy da stack..."
+            echo "✅ Variáveis configuradas"
+            echo ""
+            
+            # ==========================================
+            # 5. DEPLOY DA STACK
+            # ==========================================
+            echo "🚀 [5/6] Fazendo deploy da stack..."
             docker stack deploy -c docker-compose.yml authbrasil
             
             echo "⏳ Aguardando serviços iniciarem..."
-            sleep 15
+            sleep 20
             
-            echo "📊 Status dos serviços:"
+            # Aguardar API estar saudável
+            echo "🔍 Verificando saúde da API..."
+            for i in {1..30}; do
+              if docker service logs authbrasil_api 2>&1 | grep -q "Application startup complete"; then
+                echo "✅ API iniciada com sucesso!"
+                break
+              fi
+              echo "   Tentativa $i/30..."
+              sleep 2
+            done
+            
+            echo ""
+            
+            # ==========================================
+            # 6. VERIFICAÇÃO E RELATÓRIO
+            # ==========================================
+            echo "📊 [6/6] Status final dos serviços:"
+            echo ""
             docker service ls
+            echo ""
             
-            echo "✅ Deploy concluído!"
+            echo "🏥 Saúde dos serviços:"
+            docker service ps authbrasil_api --filter "desired-state=running" --no-trunc
+            echo ""
             
-            echo "📋 Logs do backend (últimas 30 linhas):"
-            docker service logs authbrasil_api --tail 30
+            echo "📋 Últimas 20 linhas do log:"
+            docker service logs authbrasil_api --tail 20
+            echo ""
+            
+            echo "=========================================="
+            echo "✅ Deploy concluído com sucesso!"
+            echo "=========================================="
+            echo ""
+            echo "📌 Commit: $(git rev-parse --short HEAD)"
+            echo "📌 Data: $(date)"
+            echo "📌 Imagens ativas:"
+            docker images authbrasil/api --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedAt}}"
