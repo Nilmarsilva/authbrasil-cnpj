@@ -22,19 +22,12 @@ services:
       API_VERSION: v1
       CORS_ORIGINS: '["https://app.authbrasil.app.br","http://localhost:3000"]'
       
-      # Secrets (usar Docker Secrets em produção real)
-      SECRET_KEY: ${SECRET_KEY}
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      
-      # Stripe
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
-      
       # Email
       EMAIL_FROM: noreply@authbrasil.com.br
       EMAIL_PROVIDER: sendgrid
-      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+      
+      # Note: SECRET_KEY, JWT_SECRET_KEY, STRIPE_*, SENDGRID_API_KEY 
+      # são carregadas do .env via env_file acima
       
       # Rate Limiting
       RATE_LIMIT_PER_MINUTE: 100
