@@ -1,7 +1,7 @@
 """create etl_status table
 
 Revision ID: 20251127_0730
-Revises: 20251122_1630
+Revises: 9b0693a6cde3
 Create Date: 2025-11-27 07:30:00
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '20251127_0730'
-down_revision = '20251122_1630'
+down_revision = '9b0693a6cde3'  # Version atual do banco na VPS
 branch_labels = None
 depends_on = None
 
