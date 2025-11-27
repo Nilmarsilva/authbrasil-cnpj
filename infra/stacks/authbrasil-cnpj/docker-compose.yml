@@ -9,7 +9,7 @@ services:
       DEBUG: "False"
       
       # Database (usar secrets em produção real)
-      DATABASE_URL: postgresql://authbrasil_user:${DB_PASSWORD}@postgres:5432/authbrasil_cnpj
+      DATABASE_URL: postgresql+asyncpg://authbrasil_user:${DB_PASSWORD}@postgres:5432/authbrasil_cnpj
       DATABASE_POOL_SIZE: 20
       DATABASE_MAX_OVERFLOW: 40
       
@@ -18,7 +18,7 @@ services:
       
       # API
       API_VERSION: v1
-      CORS_ORIGINS: https://app.authbrasil.app.br,https://authbrasil.com.br
+      CORS_ORIGINS: '["https://app.authbrasil.app.br","http://localhost:3000"]'
       
       # Secrets (usar Docker Secrets em produção real)
       SECRET_KEY: ${SECRET_KEY}
