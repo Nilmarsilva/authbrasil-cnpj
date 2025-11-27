@@ -58,3 +58,18 @@ async def get_current_user(
         )
     
     return user
+
+
+async def get_current_superuser(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """
+    Get current superuser (admin only)
+    Requires user to be a superuser
+    """
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acesso negado. Apenas administradores podem acessar esta funcionalidade."
+        )
+    return current_user

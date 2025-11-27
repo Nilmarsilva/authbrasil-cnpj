@@ -8,6 +8,7 @@ from app.models.plan import Plan
 from app.models.subscription import Subscription
 from app.models.api_key import APIKey
 from app.models.empresa import Empresa, Estabelecimento, Socio
+from app.models.etl_status import ETLStatus
 
 __all__ = [
     "User",
@@ -17,4 +18,5 @@ __all__ = [
     "Empresa",
     "Estabelecimento",
     "Socio",
+    "ETLStatus",
 ]
