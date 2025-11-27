@@ -41,7 +41,7 @@ services:
       - network_public
     deploy:
       mode: replicated
-      replicas: 2
+      replicas: 1
       placement:
         constraints:
           - node.role == manager
