@@ -3,7 +3,8 @@
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import { LogOut, User, Mail, Shield } from "lucide-react"
+import { LogOut, User, Mail, Shield, Database } from "lucide-react"
+import Link from "next/link"
 
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading, logout } = useAuth()
@@ -104,12 +105,39 @@ export default function DashboardPage() {
           </div>
 
           {/* Welcome Message */}
-          <div className="bg-gradient-to-r from-emerald-600 to-blue-600 rounded-lg p-8 text-white">
+          <div className="bg-gradient-to-r from-emerald-600 to-blue-600 rounded-lg p-8 text-white mb-8">
             <h3 className="text-2xl font-bold mb-2">Bem-vindo, {user.full_name}!</h3>
             <p className="text-white/90">
               Você está logado no AuthBrasil CNPJ. Em breve teremos mais funcionalidades disponíveis!
             </p>
           </div>
+
+          {/* Admin Actions - Only for Superusers */}
+          {user.is_superuser && (
+            <div className="bg-white rounded-lg shadow-lg p-8">
+              <h3 className="text-xl font-semibold mb-6 text-gray-900">Painel Administrativo</h3>
+              
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* ETL Button */}
+                <Link
+                  href="/admin/etl"
+                  className="flex items-center gap-4 p-6 border-2 border-gray-200 rounded-lg hover:border-emerald-500 hover:bg-emerald-50 transition group"
+                >
+                  <div className="bg-emerald-100 p-4 rounded-lg group-hover:bg-emerald-200 transition">
+                    <Database className="w-8 h-8 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 group-hover:text-emerald-600 transition">
+                      Importação ETL
+                    </h4>
+                    <p className="text-sm text-gray-500">
+                      Gerenciar importação de dados da Receita Federal
+                    </p>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     </div>
