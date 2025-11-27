@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 
 from app.models.etl_status import ETLStatus
-from app.db.session import SessionLocal
+from app.db.session import async_session
 
 # Configuração
 BASE_URL = "https://arquivos.receitafederal.gov.br/dados/cnpj/dados_abertos_cnpj/"
@@ -89,7 +89,7 @@ class ETLWorker:
         
     async def update_status(self, **kwargs):
         """Update ETL status in database"""
-        async with SessionLocal() as db:
+        async with async_session() as db:
             await db.execute(
                 update(ETLStatus)
                 .where(ETLStatus.job_id == self.job_id)
