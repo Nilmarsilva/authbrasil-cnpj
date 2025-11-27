@@ -24,7 +24,20 @@ from app.db.session import SessionLocal
 # Configuração
 BASE_URL = "https://arquivos.receitafederal.gov.br/dados/cnpj/dados_abertos_cnpj/"
 DATA_DIR = Path("/root/data/receita")
-CONTAINER_NAME = "databases_postgres.1.mrttx12uwquw44ho80kojdweo"
+
+# Container name - usar variável de ambiente ou buscar dinamicamente
+import subprocess as sp
+try:
+    result = sp.run(
+        ["docker", "ps", "--filter", "name=postgres", "--format", "{{.Names}}"],
+        capture_output=True,
+        text=True,
+        timeout=5
+    )
+    CONTAINER_NAME = result.stdout.strip().split('\n')[0] if result.stdout else "databases_postgres.1.mrttx12uwquw44ho80kojdweo"
+except Exception:
+    CONTAINER_NAME = "databases_postgres.1.mrttx12uwquw44ho80kojdweo"
+
 DB_USER = "authbrasil_user"
 DB_NAME = "authbrasil_cnpj"
 
