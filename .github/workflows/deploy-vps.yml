@@ -135,6 +135,11 @@ jobs:
             # 5. DEPLOY DA STACK
             # ==========================================
             echo "🚀 [5/6] Fazendo deploy da stack..."
+            cd /root/authbrasil-cnpj/infra/stacks/authbrasil-cnpj
+            
+            # Exportar variáveis do .env para o ambiente (necessário para Docker Swarm)
+            export $(cat .env | grep -v '^#' | xargs)
+            
             docker stack deploy -c docker-compose.yml authbrasil
             
             echo "⏳ Aguardando serviços iniciarem..."
