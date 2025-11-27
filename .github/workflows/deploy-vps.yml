@@ -22,7 +22,8 @@ jobs:
             
             echo "📦 Atualizando código..."
             cd /root/authbrasil-cnpj
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             
             echo "🔨 Building backend..."
             cd /root/authbrasil-cnpj/backend
