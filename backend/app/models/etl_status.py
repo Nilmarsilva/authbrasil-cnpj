@@ -49,7 +49,7 @@ class ETLStatus(Base):
     warnings = Column(JSON)  # List of warning messages
     
     # Detailed state (for resume)
-    metadata = Column(JSON)  # {processed_files: [...], failed_files: [...]}
+    job_metadata = Column(JSON)  # {processed_files: [...], failed_files: [...]}
     
     # Timestamps
     created_at = Column(DateTime, default=func.now())
